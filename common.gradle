@@ -1,0 +1,77 @@
+project.ext {
+    //======================================================================================
+    compileSdkVersion = 28
+    targetSdkVersion = 28
+    minSdkVersion = 16
+    versionCode = 1
+    versionName = "1.0.0"
+    isApplication = project.hasProperty("applicationId")
+
+    //======================================================================================
+    libs = [
+            constraintlayout: 'androidx.constraintlayout:constraintlayout:1.1.3'
+    ]
+
+    commonLibs = [
+            implementation           :
+                    [
+                            appcompat: 'androidx.appcompat:appcompat:1.3.1',
+                    ],
+            testImplementation       :
+                    [
+                            junit: 'junit:junit:4.12'
+                    ],
+            androidTestImplementation:
+                    [
+                            junit   : 'androidx.test.ext:junit:1.1.1',
+                            espresso: 'androidx.test.espresso:espresso-core:3.2.0'
+                    ]
+    ]
+
+    //======================================================================================
+    injectCommonConfig = {
+        project, plugin ->
+            project.apply plugin: plugin
+            setAndroidConfig project.android
+            setDependencies project.dependencies
+    }
+
+    //======================================================================================
+    setAndroidConfig = {
+        android ->
+            android.compileSdkVersion project.compileSdkVersion
+
+            android.defaultConfig {
+                if (isApplication) {
+                    applicationId project.applicationId
+                }
+                minSdkVersion project.minSdkVersion
+                targetSdkVersion project.targetSdkVersion
+                versionCode project.versionCode
+                versionName project.versionName
+                testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+            }
+
+            android.compileOptions {
+                sourceCompatibility JavaVersion.VERSION_1_8
+                targetCompatibility JavaVersion.VERSION_1_8
+            }
+    }
+
+    setDependencies = {
+        project.commonLibs.each {
+            k, lib ->
+                lib.each {
+                    n, v ->
+                        project.dependencies.add(k, v)
+                }
+        }
+    }
+}
+
+//======================================================================================
+if (isApplication) {
+    project.injectCommonConfig project, "com.android.application"
+} else {
+    project.injectCommonConfig project, "com.android.library"
+}
