@@ -1,3 +1,4 @@
 rootProject.name = "BFStartup"
 include ':demo'
 include ':scheduler'
+include ':startup'

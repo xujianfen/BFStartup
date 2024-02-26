@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 无限等待 -->
+    <item name="infinite_await" type="integer">-1</item>
+    <!-- 不等待 -->
+    <item name="no_await" type="integer">0</item>
+    <!--  默认等待10秒  -->
+    <item name="default_await" type="integer">10000</item>
+</resources>

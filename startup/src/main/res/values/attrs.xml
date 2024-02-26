@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!--  项目 -->
+    <declare-styleable name="project">
+        <!-- 项目名 -->
+        <attr name="bfp_name" format="string" />
+        <!-- 下面的属性是配置BFTaskConfig -->
+        <!-- 该值为true时，会在初始化结束时，检查循环依赖，默认为true -->
+        <attr name="bfp_autoCheckDependencies" format="boolean" />
+        <!-- 是否排除自循环，默认为true -->
+        <attr name="bfp_excludeSelfCircular" format="boolean" />
+        <!-- 环检查模式，优先级大于config标签 -->
+        <attr name="bfp_checkCycleMode" format="enum">
+            <enum name="default_check" value="0" />
+            <enum name="no_check" value="1" />
+            <enum name="simple_check" value="2" />
+            <enum name="scc_check" value="3" />
+            <enum name="cycle_check" value="4" />
+        </attr>
+        <!-- 等待超时时间，单位微妙 -->
+        <attr name="bfp_awaitOutTime" format="integer" />
+        <!-- 优先级队列提供者类型的全限定名，必须继承blue.fen.scheduler.priority.PriorityProvider-->
+        <attr name="bfp_priorityProvider" format="string" />
+        <!-- 任务阻塞器类型的全限定名，必须继承blue.fen.scheduler.block.Block-->
+        <attr name="bfp_block" format="string" />
+        <!-- 任务分发器类型的全限定名，必须继承blue.fen.scheduler.distributor.IDistributor-->
+        <attr name="bfp_distributor" format="string" />
+        <!-- 任务线程池类型的全限定名，必须继承blue.fen.scheduler.distributor.BFTaskExecutor-->
+        <attr name="bfp_executor" format="string" />
+        <!-- 任务流水线提供者类型的全限定名，必须继承blue.fen.scheduler.TaskFlow.Provider-->
+        <attr name="bfp_flowProvider" format="string" />
+    </declare-styleable>
+
+    <!-- 任务，标签内容为任务类的全限定名 -->
+    <declare-styleable name="task" />
+
+    <!-- 项目全局配置（这里不是配置BFTaskConfig，而是BFConfig） -->
+    <declare-styleable name="config">
+        <!-- DEBUG模式开关掩码 -->
+        <attr name="bfc_debug" format="boolean" />
+        <!-- 日志打印模式 -->
+        <attr name="bfc_logMode" format="enum">
+            <enum name="detail" value="0" />
+            <enum name="simple" value="1" />
+        </attr>
+        <!-- 环检查模式 ，优先级小于project标签-->
+        <attr name="bfc_checkCycleMode" format="enum">
+            <enum name="default_check" value="0" />
+            <enum name="no_check" value="1" />
+            <enum name="simple_check" value="2" />
+            <enum name="scc_check" value="3" />
+            <enum name="cycle_check" value="4" />
+        </attr>
+        <!-- 开启项目额外数据 -->
+        <attr name="bfc_extraDataEnable" format="boolean" />
+        <!-- 是否开启项目额外数据的自动清理 -->
+        <attr name="bfc_extraDataAutoClear" format="boolean" />
+    </declare-styleable>
+</resources>
