@@ -17,6 +17,7 @@ import blue.fen.scheduler.listener.task.ATaskLifecycleObserver;
 import blue.fen.scheduler.scheduler.ISchedulerTask;
 import blue.fen.scheduler.scheduler.SchedulerTask;
 import blue.fen.scheduler.utils.BFLog;
+import blue.fen.startup.BFProjectParser;
 
 public class MainActivity extends AppCompatActivity {
     private int count;
@@ -26,6 +27,16 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        //不使用清单文件注册，可以用这种方式执行启动项目的任务，当然也可以是其他项目
+        BFScheduler.Build scheduler = BFProjectParser.parserXmlForScheduler(this, R.xml.startup);
+        if (scheduler != null) {
+            scheduler.copyWithProject()
+                    .name("customStartup")
+                    .commit()
+                    .submit()
+                    .execute();
+        }
+
         TextView textView = findViewById(R.id.count);
         Handler mH = new Handler(Looper.getMainLooper());
 //        BFConfig.clearFlag(BFConfig.FLAG_EXTRA_DATA_AUTO_CLEAR);

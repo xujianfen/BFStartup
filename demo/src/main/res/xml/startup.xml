@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:app="http://schemas.android.com/apk/res-auto">
+    <config
+        app:bfc_checkCycleMode="scc_check"
+        app:bfc_debug="true"
+        app:bfc_extraDataAutoClear="false"
+        app:bfc_extraDataEnable="true"
+        app:bfc_logMode="detail"
+        app:bfp_checkCycleMode="scc_check" />
+    <project
+        app:bfp_awaitOutTime="@integer/infinite_await"
+        app:bfp_checkCycleMode="no_check"
+        app:bfp_executor="blue.fen.demo.executoasr.MyExecutoasr"
+        app:bfp_name="startup">
+        <task>blue.fen.demo.task.A</task>
+        <task>blue.fen.demo.task.B</task>
+    </project>
+</resources>

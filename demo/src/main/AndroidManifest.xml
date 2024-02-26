@@ -20,6 +20,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <provider
+            android:name="blue.fen.startup.BFStartupProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="bf.startup"
+                android:resource="@xml/startup" />
+        </provider>
     </application>
 
 </manifest>

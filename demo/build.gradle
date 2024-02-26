@@ -3,5 +3,6 @@ apply from: "${rootProject.rootDir}/common.gradle"
 
 dependencies {
     implementation project(path: ":scheduler")
+    implementation project(path: ":startup")
     implementation libs.constraintlayout
 }
