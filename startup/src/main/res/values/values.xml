@@ -6,4 +6,9 @@
     <item name="no_await" type="integer">0</item>
     <!--  默认等待10秒  -->
     <item name="default_await" type="integer">10000</item>
+
+    <!-- 自动生成别名 -->
+    <item name="bf_auto_alias" type="string">$$</item>
+    <!-- 不设置依赖项 -->
+    <item name="bf_no_dependencies" type="string">$$</item>
 </resources>

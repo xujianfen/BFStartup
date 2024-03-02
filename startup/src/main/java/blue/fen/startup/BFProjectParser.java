@@ -15,7 +15,9 @@ import org.xmlpull.v1.XmlPullParserException;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import blue.fen.scheduler.BFConfig;
@@ -27,6 +29,7 @@ import blue.fen.scheduler.distributor.BFTaskExecutor;
 import blue.fen.scheduler.distributor.IDistributor;
 import blue.fen.scheduler.priority.PriorityProvider;
 import blue.fen.scheduler.scheduler.ISchedulerTask;
+import blue.fen.scheduler.scheduler.decorator.AliasTask;
 import blue.fen.scheduler.utils.BFLog;
 
 /**
@@ -56,6 +59,8 @@ public class BFProjectParser {
     private static final String ATTRIBUTE_PROJECT_DISTRIBUTOR = "bfp_distributor";
     private static final String ATTRIBUTE_PROJECT_EXECUTOR = "bfp_executor";
     private static final String ATTRIBUTE_PROJECT_FLOW_PROVIDER = "bfp_flowProvider";
+    private static final String ATTRIBUTE_TASK_ALIAS = "bft_alias";
+    private static final String ATTRIBUTE_TASK_DEPENDENCIES = "bft_dependencies";
     private static final String ATTRIBUTE_CONFIG_DEBUG = "bfc_debug";
     private static final String ATTRIBUTE_CONFIG_LOG_MODE = "bfc_logMode";
     private static final String ATTRIBUTE_CONFIG_CHECK_CYCLE_MODE = "bfc_checkCycleMode";
@@ -235,7 +240,7 @@ public class BFProjectParser {
             String tag = parser.getName();
 
             if (TAG_TASK.equals(tag)) {
-                taskList.add(readTask(parser));
+                taskList.add(readTask(context, parser));
             } else {
                 skip(parser);
             }
@@ -330,6 +335,19 @@ public class BFProjectParser {
         }
     }
 
+    private static String readProjectString(XmlResourceParser parser, String attribute) {
+        return parser.getAttributeValue(NAMESPACE, attribute);
+    }
+
+    private static String readProjectString(Context context, XmlResourceParser parser, String attribute) {
+        int resourceId = parser.getAttributeResourceValue(NAMESPACE, attribute, 0);
+        if (resourceId == 0) {
+            return readProjectString(parser, attribute);
+        } else {
+            return context.getResources().getString(resourceId);
+        }
+    }
+
     private static <T> T readProjectClass(XmlResourceParser parser, String attribute, Class<T> tClass) throws Exception {
         String className = parser.getAttributeValue(NAMESPACE, attribute);
         return className == null ? null : newInstance(className, tClass);
@@ -341,12 +359,49 @@ public class BFProjectParser {
         return readCheckCycleMode(checkCycleMode);
     }
 
-    private static ISchedulerTask readTask(XmlPullParser parser) throws Exception {
+    private static ISchedulerTask readTask(Context context, XmlResourceParser parser) throws Exception {
         parser.require(XmlPullParser.START_TAG, null, TAG_TASK);
+        Map<String, Object> attribute = readAttribute(context, parser);
         String className = parser.nextText();
         className = className.trim();
         assert !TextUtils.isEmpty(className);
-        return newInstance(className, ISchedulerTask.class);
+        ISchedulerTask task = newInstance(className, ISchedulerTask.class);
+        return attribute != null ? parserAttribute(attribute, task) : task;
+    }
+
+    private static Map<String, Object> readAttribute(Context context, XmlResourceParser parser) {
+        String alias = readProjectString(context, parser, ATTRIBUTE_TASK_ALIAS);
+        if (TextUtils.isEmpty(alias)) return null;
+        String dependencies = readProjectString(context, parser, ATTRIBUTE_TASK_DEPENDENCIES);
+        Map<String, Object> attribute = new HashMap<>();
+        attribute.put(ATTRIBUTE_TASK_ALIAS, alias);
+        attribute.put(ATTRIBUTE_TASK_DEPENDENCIES, dependencies);
+        return attribute;
+    }
+
+    private static ISchedulerTask parserAttribute(Map<String, Object> attribute, ISchedulerTask task) {
+        return readAliasTask(attribute, task);
+    }
+
+    private static ISchedulerTask readAliasTask(Map<String, Object> attribute, ISchedulerTask task) {
+        String alias = (String) attribute.get(ATTRIBUTE_TASK_ALIAS);
+        if (TextUtils.isEmpty(alias)) {
+            return null;
+        }
+        AliasTask.Builder aliasTask = AliasTask.builder().task(task);
+        if (!"$$".equals(alias)) { //不自动生成别名
+            aliasTask.alias(alias);
+        }
+        String dependencies = (String) attribute.get(ATTRIBUTE_TASK_DEPENDENCIES);
+        if (!TextUtils.isEmpty(dependencies)) { //不保留原有依赖
+            if ("$$".equals(dependencies)) {
+                aliasTask.noDependencies(); //没有依赖项
+            } else {
+                //noinspection DataFlowIssue
+                aliasTask.dependencies(dependencies.split(","));
+            }
+        }
+        return aliasTask.build();
     }
 
     private static <T> T newInstance(String className, Class<T> tClass) throws Exception {

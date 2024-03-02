@@ -11,9 +11,11 @@ import com.squareup.javapoet.MethodSpec;
 import com.squareup.javapoet.TypeSpec;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -30,7 +32,9 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
 
+import blue.fen.scheduler_annotation.AliasTasks;
 import blue.fen.scheduler_annotation.SchedulerTask;
+import blue.fen.scheduler_annotation.AliasTask;
 import blue.fen.scheduler_compiler.utils.ILogger;
 import blue.fen.scheduler_compiler.utils.MessagerLogger;
 
@@ -52,6 +56,7 @@ public class SchedulerProcessor extends AbstractProcessor {
 
     private final Map<String, Element> taskMap = new HashMap<>();
     private final Map<String, Set<String>> projectMap = new HashMap<>();
+    private final Map<String, Map<String, List<AliasTask>>> aliasMap = new HashMap<>();
 
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
@@ -115,7 +120,59 @@ public class SchedulerProcessor extends AbstractProcessor {
                     processProjectAnnotation(projects, task);
                 }
             }
+
+            processAliasTaskAnnotation(element);
         }
+    }
+
+    private void processAliasTaskAnnotation(Element element) {
+        AliasTasks aliasTasks = element.getAnnotation(AliasTasks.class);
+        if (aliasTasks == null) {
+            AliasTask aliasTask = element.getAnnotation(AliasTask.class);
+            if (aliasTask != null) {
+                processAliasTaskAnnotation(element, aliasTask);
+            }
+            return;
+        }
+
+        for (AliasTask aliasTask : aliasTasks.value()) {
+            if (processAliasTaskAnnotation(element, aliasTask)) {
+                break;
+            }
+        }
+    }
+
+
+    private boolean processAliasTaskAnnotation(Element element, AliasTask aliasTask) {
+        String[] projects = aliasTask.projects();
+        int count = 0;
+        if (projects != null) {
+            for (String project : projects) {
+                if (!project.isEmpty()) {
+                    processAliasTaskAnnotation(element, project, aliasTask);
+                    count++;
+                }
+            }
+        }
+        if (count == 0) {
+            processAliasTaskAnnotation(element, "*", aliasTask);
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    private void processAliasTaskAnnotation(Element element, String project, AliasTask aliasTask) {
+        String task = element.toString();
+        Map<String, List<AliasTask>> aliasTaskMap = aliasMap.computeIfAbsent(
+                project,
+                k -> new HashMap<>()
+        );
+        List<AliasTask> aliasTasks = aliasTaskMap.computeIfAbsent(
+                task,
+                k -> new ArrayList<>()
+        );
+        aliasTasks.add(aliasTask);
     }
 
     private void processProjectAnnotation(String[] projects, String task) {
@@ -143,11 +200,27 @@ public class SchedulerProcessor extends AbstractProcessor {
         if (!taskMap.isEmpty()) {
             for (Map.Entry<String, Set<String>> entry : projectMap.entrySet()) {
                 String project = entry.getKey();
-                MethodSpec sourceMethod = generateMethodToProjectSource(
-                        project,
-                        newInstance.name,
-                        entry.getValue()
-                ).build();
+                MethodSpec.Builder sourceMethodBuilder = generateMethodToProjectSource(project);
+
+                for (String task : entry.getValue()) {
+                    Element element = taskMap.get(task);
+
+                    if (processAliasTask(
+                            project,
+                            task,
+                            newInstance.name,
+                            sourceMethodBuilder
+                    )) continue;
+
+                    sourceMethodBuilder.addStatement(
+                            "tasks.add($L($S))",
+                            newInstance.name,
+                            element.toString()
+                    );
+                }
+                sourceMethodBuilder.addStatement("return tasks");
+
+                MethodSpec sourceMethod = sourceMethodBuilder.build();
                 findImplClass.addMethod(sourceMethod);
                 findAllTaskNoEmpty
                         .beginControlFlow("case $S:", project)
@@ -216,11 +289,87 @@ public class SchedulerProcessor extends AbstractProcessor {
                 .endControlFlow();
     }
 
-    private MethodSpec.Builder generateMethodToProjectSource(
+    private List<AliasTask> getAliasTasks(String project, String task) {
+        List<AliasTask> aliasTasks = null;
+        Map<String, List<AliasTask>> aliasTaskMap = aliasMap.get("*");
+        if (aliasTaskMap != null) {
+            aliasTasks = aliasTaskMap.get(task);
+            if (aliasTasks != null) {
+                return aliasTasks;
+            }
+        }
+        aliasTaskMap = aliasMap.get(project);
+        if (aliasTaskMap != null) {
+            aliasTasks = aliasTaskMap.get(task);
+        }
+        return aliasTasks;
+    }
+
+    private boolean processAliasTask(
             String project,
+            String task,
             String newInstance,
-            Set<String> taskSet
+            MethodSpec.Builder builder
     ) {
+        List<AliasTask> aliasTasks = getAliasTasks(project, task);
+        if (aliasTasks == null) return false;
+        for (AliasTask aliasTask : aliasTasks) {
+            processAliasTask(task, aliasTask, newInstance, builder);
+        }
+        return true;
+    }
+
+    private void processAliasTask(
+            String task,
+            AliasTask aliasTask,
+            String newInstance,
+            MethodSpec.Builder builder
+    ) {
+        StringBuilder stringBuilder = new StringBuilder()
+                .append("tasks.add(\n")
+                .append("\t$T.builder()\n")
+                .append("\t\t.task($L($S))\n");
+
+        String alias = aliasTask.value();
+        if (alias.length() > 0) {
+            if ("$".equals(alias)) alias = "$$";
+            stringBuilder
+                    .append("\t\t.alias(\"")
+                    .append(alias)
+                    .append("\")\n");
+        }
+
+        String[] dependencies = aliasTask.dependencies();
+        if (dependencies.length == 0) {
+            if (aliasTask.noDependencies()) {
+                stringBuilder.append("\t\t.noDependencies()\n");
+            }
+        } else {
+            for (int i = 0; i < dependencies.length; i++) {
+                if ("$".equals(dependencies[i])) {
+                    dependencies[i] = "\"$$\"";
+                } else {
+                    dependencies[i] = "\"" + dependencies[i] + "\"";
+                }
+            }
+            stringBuilder
+                    .append("\t\t.dependencies(")
+                    .append(String.join(",", dependencies))
+                    .append(")\n");
+        }
+
+        stringBuilder
+                .append("\t\t.build()\n")
+                .append(");\n");
+
+        builder.addCode(stringBuilder.toString(),
+                CLASS_NAME_I_ALIAS_TASK,
+                newInstance,
+                task
+        );
+    }
+
+    private MethodSpec.Builder generateMethodToProjectSource(String project) {
         MethodSpec.Builder builder = MethodSpec
                 .methodBuilder(project + "ProjectSource")
                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
@@ -230,15 +379,6 @@ public class SchedulerProcessor extends AbstractProcessor {
                         CLASS_NAME_I_SCHEDULER_TASK,
                         CLASS_NAME_ARRAY_LIST
                 );
-        for (String task : taskSet) {
-            Element element = taskMap.get(task);
-            builder.addStatement(
-                    "tasks.add($L($S))",
-                    newInstance,
-                    element.toString()
-            );
-        }
-        builder.addStatement("return tasks");
         addException(builder);
         return builder;
     }

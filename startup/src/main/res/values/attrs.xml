@@ -32,7 +32,15 @@
     </declare-styleable>
 
     <!-- 任务，标签内容为任务类的全限定名 -->
-    <declare-styleable name="task" />
+    <declare-styleable name="task">
+        <!-- 设置任务别名，默认（别名为空）不使用别名，为@string/bft_auto_alias表示自动生成别名 -->
+        <attr name="bft_alias" format="string" />
+
+        <!-- 设置任务别名对应的依赖项，未设置别名时将不起效；
+        依赖任务间用","分割，默认保持原有依赖（不设置或者为空），
+        值为@string/bf_no_dependencies表示没有依赖 -->
+        <attr name="bft_dependencies" format="string" />
+    </declare-styleable>
 
     <!-- 项目全局配置（这里不是配置BFTaskConfig，而是BFConfig） -->
     <declare-styleable name="config">

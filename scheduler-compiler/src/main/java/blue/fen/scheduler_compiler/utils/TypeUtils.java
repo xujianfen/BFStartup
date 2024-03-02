@@ -13,6 +13,9 @@ public class TypeUtils {
     public static final ClassName CLASS_NAME_I_SCHEDULER_TASK =
             ClassName.get(PACKAGE_NAME + ".scheduler", "ISchedulerTask");
 
+    public static final ClassName CLASS_NAME_I_ALIAS_TASK =
+            ClassName.get(PACKAGE_NAME + ".scheduler.decorator", "AliasTask");
+
     public static final ClassName CLASS_NAME_LIST =
             ClassName.get("java.util", "List");
 
