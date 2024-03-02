@@ -2,3 +2,5 @@ rootProject.name = "BFStartup"
 include ':demo'
 include ':scheduler'
 include ':startup'
+include ':scheduler-compiler'
+include ':scheduler-annotation'
