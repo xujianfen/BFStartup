@@ -4,5 +4,7 @@ apply from: "${rootProject.rootDir}/common.gradle"
 dependencies {
     implementation project(path: ":scheduler")
     implementation project(path: ":startup")
+    implementation project(path: ":scheduler-annotation")
+    annotationProcessor project(path: ':scheduler-compiler')
     implementation libs.constraintlayout
 }

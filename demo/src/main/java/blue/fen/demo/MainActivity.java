@@ -8,8 +8,10 @@ import android.os.Looper;
 import android.view.View;
 import android.widget.TextView;
 
+import blue.fen.demo.executoasr.MyExecutoasr;
 import blue.fen.scheduler.BFConfig;
 import blue.fen.scheduler.BFScheduler;
+import blue.fen.scheduler.BFTaskFinder;
 import blue.fen.scheduler.listener.project.AProjectLifecycleObserver;
 import blue.fen.scheduler.listener.project.ExtraDataRecords;
 import blue.fen.scheduler.listener.project.ProjectLifecycleObservable;
@@ -36,6 +38,23 @@ public class MainActivity extends AppCompatActivity {
                     .submit()
                     .execute();
         }
+
+        BFScheduler.Build build = BFScheduler.build()
+                .newConfig()
+                .executor(new MyExecutoasr())
+                .commit();
+        build.newProject()
+                .name("test")
+                .register(BFTaskFinder.findAllTask("test"))
+                .commit()
+                .submit()
+                .execute();
+        build.newProject()
+                .name("test2")
+                .register(BFTaskFinder.findAllTask("test2"))
+                .commit()
+                .submit()
+                .execute();
 
         TextView textView = findViewById(R.id.count);
         Handler mH = new Handler(Looper.getMainLooper());
