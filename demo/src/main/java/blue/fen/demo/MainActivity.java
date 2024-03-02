@@ -9,6 +9,9 @@ import android.view.View;
 import android.widget.TextView;
 
 import blue.fen.demo.executoasr.MyExecutoasr;
+import blue.fen.demo.task.A;
+import blue.fen.demo.task.B;
+import blue.fen.scheduler.scheduler.decorator.AliasTask;
 import blue.fen.scheduler.BFConfig;
 import blue.fen.scheduler.BFScheduler;
 import blue.fen.scheduler.BFTaskFinder;
@@ -46,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
         build.newProject()
                 .name("test")
                 .register(BFTaskFinder.findAllTask("test"))
+                .register(AliasTask.builder().task(new A()).dependencies("B2").build())
+                .register(AliasTask.builder().alias("B2").task(new B()).build())
                 .commit()
                 .submit()
                 .execute();

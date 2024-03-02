@@ -12,7 +12,17 @@
         app:bfp_checkCycleMode="no_check"
         app:bfp_executor="blue.fen.demo.executoasr.MyExecutoasr"
         app:bfp_name="startup">
-        <task>blue.fen.demo.task.A</task>
+        <task
+            app:bft_alias="@string/bf_auto_alias"
+            app:bft_dependencies="$,blue.fen.demo.task.B">
+            blue.fen.demo.task.A
+        </task>
+        <task app:bft_alias="$">blue.fen.demo.task.A</task>
         <task>blue.fen.demo.task.B</task>
+        <task
+            app:bft_alias="B2"
+            app:bft_dependencies="@string/bf_no_dependencies">
+            blue.fen.demo.task.B
+        </task>
     </project>
 </resources>
