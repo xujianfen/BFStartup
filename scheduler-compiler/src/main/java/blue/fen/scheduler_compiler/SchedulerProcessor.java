@@ -1,5 +1,6 @@
 package blue.fen.scheduler_compiler;
 
+import static blue.fen.scheduler_compiler.utils.Consts.USE_REFLECTION;
 import static blue.fen.scheduler_compiler.utils.TypeUtils.*;
 
 import com.google.auto.service.AutoService;
@@ -24,6 +25,7 @@ import javax.annotation.processing.Filer;
 import javax.annotation.processing.ProcessingEnvironment;
 import javax.annotation.processing.Processor;
 import javax.annotation.processing.RoundEnvironment;
+import javax.annotation.processing.SupportedOptions;
 import javax.lang.model.SourceVersion;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.Modifier;
@@ -43,6 +45,7 @@ import blue.fen.scheduler_compiler.utils.MessagerLogger;
  * <p>作者： blue_fen</p>
  * <p>描述：</p>
  */
+@SupportedOptions(USE_REFLECTION)
 @AutoService(Processor.class)
 public class SchedulerProcessor extends AbstractProcessor {
     private Filer filer;
@@ -58,6 +61,8 @@ public class SchedulerProcessor extends AbstractProcessor {
     private final Map<String, Set<String>> projectMap = new HashMap<>();
     private final Map<String, Map<String, List<AliasTask>>> aliasMap = new HashMap<>();
 
+    boolean useReflection;
+
     @Override
     public synchronized void init(ProcessingEnvironment processingEnv) {
         super.init(processingEnv);
@@ -67,6 +72,12 @@ public class SchedulerProcessor extends AbstractProcessor {
         logger = new MessagerLogger(processingEnv.getMessager());
 
         tmISchedulerTask = elements.getTypeElement(I_SCHEDULER_TASK_NAME).asType();
+
+        Map<String, String> options = processingEnv.getOptions();
+        if (!options.isEmpty()) {
+            useReflection = Boolean.parseBoolean(options.get(USE_REFLECTION));
+        }
+        logger.info("任务查找器是否使用反射：" + useReflection);
     }
 
     @Override
@@ -183,7 +194,12 @@ public class SchedulerProcessor extends AbstractProcessor {
     }
 
     private JavaFile generateFinder() {
-        MethodSpec newInstance = generateMethodToNewInstance();
+        MethodSpec newInstance = null;
+        String newInstanceName = "";
+        if (useReflection) {
+            newInstance = generateMethodToNewInstance();
+            newInstanceName = newInstance.name;
+        }
 
         MethodSpec.Builder findAllTaskNoEmpty = generateMethodToFindAllTaskNoEmpty();
         MethodSpec.Builder findAllTask = generateMethodToFindAllTask();
@@ -208,16 +224,23 @@ public class SchedulerProcessor extends AbstractProcessor {
 
                     if (processAliasTask(
                             project,
-                            task,
-                            newInstance.name,
+                            element,
+                            newInstanceName,
                             sourceMethodBuilder
                     )) continue;
 
-                    sourceMethodBuilder.addStatement(
-                            "tasks.add($L($S))",
-                            newInstance.name,
-                            element.toString()
-                    );
+                    if (useReflection) {
+                        sourceMethodBuilder.addStatement(
+                                "tasks.add($L($S))",
+                                newInstanceName,
+                                element.toString()
+                        );
+                    } else {
+                        sourceMethodBuilder.addStatement(
+                                "tasks.add(new $T())",
+                                ClassName.get((TypeElement) element)
+                        );
+                    }
                 }
                 sourceMethodBuilder.addStatement("return tasks");
 
@@ -229,8 +252,13 @@ public class SchedulerProcessor extends AbstractProcessor {
                         .endControlFlow();
             }
         }
+
+        if (newInstance != null) {
+            findImplClass
+                    .addMethod(newInstance);
+        }
+
         findImplClass
-                .addMethod(newInstance)
                 .addMethod(findAllTask.build())
                 .addMethod(
                         findAllTaskNoEmpty
@@ -308,28 +336,46 @@ public class SchedulerProcessor extends AbstractProcessor {
 
     private boolean processAliasTask(
             String project,
-            String task,
+            Element taskElement,
             String newInstance,
             MethodSpec.Builder builder
     ) {
+        String task = taskElement.toString();
         List<AliasTask> aliasTasks = getAliasTasks(project, task);
         if (aliasTasks == null) return false;
         for (AliasTask aliasTask : aliasTasks) {
-            processAliasTask(task, aliasTask, newInstance, builder);
+            processAliasTask(taskElement, aliasTask, newInstance, builder);
         }
         return true;
     }
 
     private void processAliasTask(
-            String task,
+            Element taskElement,
             AliasTask aliasTask,
             String newInstance,
             MethodSpec.Builder builder
     ) {
+        String task = taskElement.toString();
+
         StringBuilder stringBuilder = new StringBuilder()
                 .append("tasks.add(\n")
-                .append("\t$T.builder()\n")
-                .append("\t\t.task($L($S))\n");
+                .append("\t$T.builder()\n");
+
+        Object[] args;
+        if (useReflection) {
+            stringBuilder.append("\t\t.task($L($S))\n");
+            args = new Object[]{
+                    CLASS_NAME_I_ALIAS_TASK,
+                    newInstance,
+                    task
+            };
+        } else {
+            stringBuilder.append("\t\t.task(new $T())\n");
+            args = new Object[]{
+                    CLASS_NAME_I_ALIAS_TASK,
+                    ClassName.get((TypeElement) taskElement)
+            };
+        }
 
         String alias = aliasTask.value();
         if (alias.length() > 0) {
@@ -363,11 +409,7 @@ public class SchedulerProcessor extends AbstractProcessor {
                 .append("\t\t.build()\n")
                 .append(");\n");
 
-        builder.addCode(stringBuilder.toString(),
-                CLASS_NAME_I_ALIAS_TASK,
-                newInstance,
-                task
-        );
+        builder.addCode(stringBuilder.toString(), args);
     }
 
     private MethodSpec.Builder generateMethodToProjectSource(int index) {
