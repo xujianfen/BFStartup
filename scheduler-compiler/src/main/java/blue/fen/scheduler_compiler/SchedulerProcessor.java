@@ -198,9 +198,10 @@ public class SchedulerProcessor extends AbstractProcessor {
                 );
 
         if (!taskMap.isEmpty()) {
+            int index = 0;
             for (Map.Entry<String, Set<String>> entry : projectMap.entrySet()) {
                 String project = entry.getKey();
-                MethodSpec.Builder sourceMethodBuilder = generateMethodToProjectSource(project);
+                MethodSpec.Builder sourceMethodBuilder = generateMethodToProjectSource(index++);
 
                 for (String task : entry.getValue()) {
                     Element element = taskMap.get(task);
@@ -369,9 +370,9 @@ public class SchedulerProcessor extends AbstractProcessor {
         );
     }
 
-    private MethodSpec.Builder generateMethodToProjectSource(String project) {
+    private MethodSpec.Builder generateMethodToProjectSource(int index) {
         MethodSpec.Builder builder = MethodSpec
-                .methodBuilder(project + "ProjectSource")
+                .methodBuilder("projectSource" + index)
                 .addModifiers(Modifier.PRIVATE, Modifier.STATIC)
                 .returns(TYPE_NAME_LIST_OF_SCHEDULER_TASK)
                 .addStatement("$T<$T> tasks = new $T<>()",
