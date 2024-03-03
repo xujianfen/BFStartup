@@ -1,6 +1,16 @@
 ext.applicationId = "blue.fen.demo"
 apply from: "${rootProject.rootDir}/common.gradle"
 
+android {
+    defaultConfig {
+        javaCompileOptions {
+            annotationProcessorOptions {
+                //默认不使用反射
+                arguments = [BF_USE_REFLECTION: "true"]
+            }
+        }
+    }
+}
 dependencies {
     implementation project(path: ":scheduler")
     implementation project(path: ":startup")
