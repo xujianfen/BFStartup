@@ -1,1 +1,2 @@
 apply from: "${rootProject.rootDir}/common.gradle"
+apply from: "${rootProject.rootDir}/gradle/maven.gradle"

@@ -1,6 +1,7 @@
 plugins {
     id 'java-library'
 }
+apply from: "${rootProject.rootDir}/gradle/maven.gradle"
 
 java {
     sourceCompatibility = JavaVersion.VERSION_1_8

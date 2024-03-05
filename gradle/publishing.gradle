@@ -1,0 +1,153 @@
+if (isJAR) {
+    javadoc {
+        options {
+            encoding "UTF-8"
+            charSet 'UTF-8'
+            author true
+            version true
+            links "http://docs.oracle.com/javase/8/docs/api"
+        }
+    }
+
+    java {
+        withJavadocJar()
+        withSourcesJar()
+    }
+
+    task generateJar(type: Jar) {
+        from configurations.compile.collect { it.isDirectory() ? it : zipTree(it) }
+        from sourceSets.main.output
+        archiveFileName = "${project.buildDir}/libs/${project.name}.jar"
+    }
+
+    task generateSourcesJar(type: Jar) {
+        archiveClassifier.set("sources")
+    }
+
+    task generateJavadocJar(type: Jar) {
+        archiveClassifier.set('javadoc')
+        from javadoc
+    }
+} else if (isAAR) {
+    task generateSourcesJar(type: Jar) {
+        archiveClassifier.set("sources")
+        from android.sourceSets.main.java.source
+        exclude "**/R.class"
+        exclude "**/BuildConfig.class"
+    }
+}
+
+project.ext.injectPublishing = {
+    publishing ->
+        println "------------Maven-------------"
+        println "MAVEN_ID = ${MAVEN_ID}"
+        println "MAVEN_NAME = ${MAVEN_NAME}"
+        println "MAVEN_EMAIL = ${MAVEN_EMAIL}"
+        println "MAVEN_PASSWORD = ${MAVEN_PASSWORD}"
+
+        def year = new Date().format("yyyy")
+        println "publishing($year) = $publishing"
+
+        project.publishing {
+            publications {
+                mavenJava(MavenPublication) {
+                    groupId publishing.groupId
+                    artifactId publishing.artifactId
+                    version publishing.version
+
+                    if (isJAR) {
+                        artifact generateJar
+                        artifact generateSourcesJar
+                        artifact generateJavadocJar
+                    } else if (isAAR) {
+                        artifact "${project.buildDir}/outputs/aar/${project.name}-release.aar"
+                        artifact generateSourcesJar
+                    }
+
+                    versionMapping {
+                        usage('java-api') {
+                            fromResolutionOf('runtimeClasspath')
+                        }
+                        usage('java-runtime') {
+                            fromResolutionResult()
+                        }
+                    }
+
+                    pom {
+                        if (project.uploadMaven) {
+                            name = publishing.artifactId
+                            description = publishing.artifactId
+                            url = publishing.projectUrl
+                            inceptionYear = year
+
+                            licenses {
+                                license {
+                                    name = 'The Apache License, Version 2.0'
+                                    url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                                }
+                            }
+
+                            developers {
+                                developer {
+                                    id = MAVEN_ID
+                                    name = MAVEN_NAME
+                                    email = MAVEN_EMAIL
+                                }
+                            }
+
+                            scm {
+                                url = publishing.projectUrl
+                                connection = "scm:git@${publishing.projectUrl}.git"
+                                developerConnection = "scm:git@${publishing.projectUrl}.git"
+                            }
+                        }
+
+                        // A slightly hacky fix so that your POM will include any transitive dependencies
+                        // that your library builds upon
+                        withXml {
+                            def dependenciesNode = asNode().appendNode('dependencies')
+                            project.configurations.all { configuration ->
+                                def name = configuration.name
+                                if (name != "implementation" && name != "compile" && name != "api") {
+                                    return
+                                }
+                                println(configuration)
+                                configuration.dependencies.each {
+                                    println(it)
+                                    if (it.name == "unspecified") {
+                                        // 忽略无法识别的
+                                        return
+                                    }
+                                    def dependencyNode = dependenciesNode.appendNode('dependency')
+                                    dependencyNode.appendNode('groupId', it.group)
+                                    dependencyNode.appendNode('artifactId', it.name)
+                                    dependencyNode.appendNode('version', it.version)
+                                    if (name == "api" || name == "compile") {
+                                        dependencyNode.appendNode("scope", "compile")
+                                    } else { // implementation
+                                        dependencyNode.appendNode("scope", "runtime")
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            repositories {
+                maven {
+                    url = uri(repoUrl)
+                    if (project.uploadMaven) {
+                        credentials {
+                            username MAVEN_NAME
+                            password MAVEN_PASSWORD
+                        }
+                    }
+                }
+            }
+        }
+        if (project.uploadMaven) {
+            project.signing {
+                sign project.publishing.publications.maven
+            }
+        }
+}

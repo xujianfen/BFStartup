@@ -1,36 +1,106 @@
 // Top-level build file where you can add configuration options common to all sub-projects/modules.
+apply from: "${rootProject.rootDir}/gradle/global-properties.gradle"
 
 buildscript {
-    repositories {
-        maven { url 'https://maven.aliyun.com/repository/central' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-        maven { url 'https://maven.aliyun.com/repository/grails-core' }
-        maven { url 'https://maven.aliyun.com/repository/apache-snapshots' }
-        maven { url 'https://jitpack.io' }
-        google()
-        mavenCentral()
+    //======================================================================================
+    def NO_MAVEN = "no"
+    def LOCAL_MAVEN = "local"
+    def TEST_MAVEN = "test"
+    def RELEASE_MAVEN = "release"
+
+    def LOCAL_REPOSITORY_URL = "${rootProject.rootDir}/maven/local"
+    def SNAPSHOTS_REPOSITORY_URL = "https://s01.oss.sonatype.org/content/repositories/snapshots/"
+    def RELEASES_REPOSITORY_URL = "https://s01.oss.sonatype.org/service/local/staging/deploy/maven2/"
+
+    ext {
+        //======================================================================================
+        mavenGroup = "io.github.xujianfen.pram"
+        mavenUrl = "https://github.com/xujianfen/BFStartup"
+        mavenVersion = "1.0.0"
+
+        repoUrl = ""
+        developMode = NO_MAVEN
+        switch (developMode) {
+            case LOCAL_MAVEN:
+                repoUrl = LOCAL_REPOSITORY_URL
+                mavenVersion += "-LOCAL"
+                break
+            case TEST_MAVEN:
+                repoUrl = SNAPSHOTS_REPOSITORY_URL
+                mavenVersion += "-SNAPSHOT"
+                break
+            case RELEASE_MAVEN:
+                repoUrl = RELEASES_REPOSITORY_URL
+                break
+        }
+
+        isDevelopMode = { developMode == it }
+        noMaven = isDevelopMode(NO_MAVEN)
+        localMaven = isDevelopMode(LOCAL_MAVEN)
+        uploadMaven = isDevelopMode(TEST_MAVEN) || isDevelopMode(RELEASE_MAVEN)
+
+        //======================================================================================
+        MAVEN_ID = ""
+        MAVEN_NAME = ""
+        MAVEN_EMAIL = ""
+        MAVEN_PASSWORD = ""
+
+        def tryGetMavenConfigInfo = {
+            try {
+                Properties properties = new Properties()
+                properties.load(file('maven/maven.properties').newDataInputStream())
+
+                MAVEN_ID = properties.getProperty('MAVEN_ID')
+                MAVEN_NAME = properties.getProperty('MAVEN_NAME')
+                MAVEN_EMAIL = properties.getProperty('MAVEN_EMAIL')
+                MAVEN_PASSWORD = properties.getProperty('MAVEN_PASSWORD')
+
+                println "------------Maven-------------"
+                println "MAVEN_ID = ${MAVEN_ID}"
+                println "MAVEN_NAME = ${MAVEN_NAME}"
+                println "MAVEN_EMAIL = ${MAVEN_EMAIL}"
+                println "MAVEN_PASSWORD = ${MAVEN_PASSWORD}"
+
+                true
+            } catch (e) {
+                e.printStackTrace()
+                false
+            }
+        }
+
+        hasMavenConfig = !noMaven && tryGetMavenConfigInfo()
+
+        //======================================================================================
+        mavenRepositories = {
+            maven { url 'https://maven.aliyun.com/repository/central' }
+            maven { url 'https://maven.aliyun.com/repository/public' }
+            maven { url 'https://maven.aliyun.com/repository/google' }
+            maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
+            maven { url 'https://maven.aliyun.com/repository/grails-core' }
+            maven { url 'https://maven.aliyun.com/repository/apache-snapshots' }
+            maven { url 'https://jitpack.io' }
+            if(isDevelopMode(TEST_MAVEN)) {
+                maven { url 'https://s01.oss.sonatype.org/content/repositories/snapshots/'}
+            }
+            if (rootProject.localMaven) {
+                maven { url repoUrl }
+            }
+            google()
+            mavenCentral()
+        }
     }
+    repositories rootProject.mavenRepositories
+
     dependencies {
         classpath 'com.android.tools.build:gradle:4.1.0'
     }
 }
 
 allprojects {
-    repositories {
-        maven { url 'https://maven.aliyun.com/repository/central' }
-        maven { url 'https://maven.aliyun.com/repository/public' }
-        maven { url 'https://maven.aliyun.com/repository/google' }
-        maven { url 'https://maven.aliyun.com/repository/gradle-plugin' }
-        maven { url 'https://maven.aliyun.com/repository/grails-core' }
-        maven { url 'https://maven.aliyun.com/repository/apache-snapshots' }
-        maven { url 'https://jitpack.io' }
-        google()
-        mavenCentral()
-    }
+    repositories rootProject.mavenRepositories
 }
 
+//======================================================================================
 task clean(type: Delete) {
     delete rootProject.buildDir
 }

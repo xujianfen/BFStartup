@@ -1,0 +1,43 @@
+allprojects {
+    ext {
+        def JAR = "java-library"
+        def AAR = "com.android.library"
+        def APP = "com.android.application"
+
+        isJAR = false
+        isAAR = false
+        isAPP = false
+
+        def checkProjectType = { projectType, closure ->
+            project.plugins.withId(projectType) {
+                println "Project($project.name)类型是$projectType"
+                closure()
+            }
+        }
+
+        checkProjectType(APP) { isAPP = true }
+        checkProjectType(AAR) { isAAR = true }
+        checkProjectType(JAR) { isJAR = true }
+
+        projectImplementation = {
+            String dependency ->
+                projectInnerDependency "implementation", dependency
+        }
+
+        projectAnnotationProcessor = {
+            String dependency ->
+                projectInnerDependency "annotationProcessor", dependency
+        }
+
+        projectInnerDependency = {
+            type, dependency ->
+                if (rootProject.noMaven) {
+                    println "project $type: ${project(":$dependency")} ${project.mavenGroup}"
+                    project.dependencies.add(type, project(":$dependency"))
+                } else {
+                    println "project $type: ${"$mavenGroup:$dependency:$mavenVersion"}"
+                    project.dependencies.add(type, "$mavenGroup:$dependency:$mavenVersion")
+                }
+        }
+    }
+}

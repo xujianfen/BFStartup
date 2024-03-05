@@ -1,5 +1,6 @@
 apply from: "${rootProject.rootDir}/common.gradle"
+apply from: "${rootProject.rootDir}/gradle/maven.gradle"
 
 dependencies {
-    implementation project(path: ":scheduler")
+    projectImplementation "scheduler"
 }

@@ -12,9 +12,9 @@ android {
     }
 }
 dependencies {
-    implementation project(path: ":scheduler")
-    implementation project(path: ":startup")
-    implementation project(path: ":scheduler-annotation")
-    annotationProcessor project(path: ':scheduler-compiler')
+    projectImplementation "scheduler"
+    projectImplementation "startup"
+    projectImplementation "scheduler-annotation"
+    projectAnnotationProcessor "scheduler-compiler"
     implementation libs.constraintlayout
 }

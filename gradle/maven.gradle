@@ -1,0 +1,65 @@
+if (isAPP || noMaven || hasProperty("importedMaven")) {
+    return
+} else {
+    ext.importedMaven = true
+}
+
+apply plugin: 'maven-publish'
+apply plugin: 'signing'
+apply from: "${rootProject.rootDir}/gradle/publishing.gradle"
+
+project.ext {
+    mavenPublishing = {
+        closure ->
+            if (!hasMavenConfig) {
+                println "未找到Maven配置文件，跳过发布流程"
+                return
+            }
+            def publishing = new MavenPublishing()
+            closure.resolveStrategy = Closure.DELEGATE_FIRST
+            closure.delegate = publishing
+            closure publishing
+            injectPublishing publishing
+    }
+}
+
+mavenPublishing {
+    group mavenGroup
+    name project.name
+    version mavenVersion
+    url mavenUrl
+}
+
+class MavenPublishing {
+    String groupId
+
+    String artifactId
+
+    String version
+
+    String projectUrl
+
+    void group(String groupId) {
+        this.groupId = groupId
+    }
+
+    void name(String artifactId) {
+        this.artifactId = artifactId
+    }
+
+    void version(String version) {
+        this.version = version
+    }
+
+    void url(String projectUrl) {
+        this.projectUrl = projectUrl
+    }
+
+    @Override
+    String toString() {
+        return "groupId=${groupId}\n" +
+                "artifactId=${artifactId}\n" +
+                "version=${version}\n" +
+                "projectUrl= ${projectUrl}\n"
+    }
+}
