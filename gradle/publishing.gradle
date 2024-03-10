@@ -147,7 +147,7 @@ project.ext.injectPublishing = {
         }
         if (project.uploadMaven) {
             project.signing {
-                sign project.publishing.publications.maven
+                sign project.publishing.publications
             }
         }
 }
